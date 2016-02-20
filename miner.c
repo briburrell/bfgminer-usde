@@ -10361,11 +10361,16 @@ void gen_stratum_work3(struct work * const work, struct stratum_work * const swo
 	uint8_t *merkle_bin;
 	uint32_t *data32, *swap32;
 	int i;
+#ifndef STANDARD_BITCOIN_MERKLE_HASH
+  uint8_t merkle[256][32];
+  int i2, nSize, j, k;
+#endif
 	
 	coinbase = bytes_buf(&swork->coinbase);
 	
 	/* Generate merkle root */
 	gen_hash(coinbase, merkle_root, bytes_len(&swork->coinbase));
+#ifdef STANDARD_BITCOIN_MERKLE_HASH
 	memcpy(merkle_sha, merkle_root, 32);
 	merkle_bin = bytes_buf(&swork->merkle_bin);
 	for (i = 0; i < swork->merkles; ++i, merkle_bin += 32) {
@@ -10373,6 +10378,31 @@ void gen_stratum_work3(struct work * const work, struct stratum_work * const swo
 		gen_hash(merkle_sha, merkle_root, 64);
 		memcpy(merkle_sha, merkle_root, 32);
 	}
+#else /* USDE */
+#define MIN(a,b) ((a<b) ? a : b)
+  k = 0;
+  memcpy(merkle[k++], merkle_root, 32); /* coinbase */
+
+  merkle_bin = bytes_buf(&swork->merkle_bin);
+  for (i = 0; i < swork->merkles; ++i, merkle_bin += 32) {
+    memcpy(merkle[k++], merkle_bin, 32);
+  }
+
+  j = 0;
+  memset(merkle_root, 0, sizeof(merkle_root));
+  memset(merkle_sha, 0, sizeof(merkle_sha));
+  for (nSize = k; nSize > 1; nSize = (nSize + 1) / 2) {
+    for (i = 0; i < nSize; i += 2) {
+      i2 = MIN(i+1, nSize-1);
+      memcpy (merkle_sha, merkle[j+i], 32);
+      memcpy (merkle_sha + 32, merkle[j+i2], 32);
+      gen_hash(merkle_sha, merkle_root, 64);
+      memcpy(merkle[k++], merkle_root, 32);
+    }
+    j += nSize;
+  }
+  memcpy(merkle_sha, merkle[k-1], 32);
+#endif
 	data32 = (uint32_t *)merkle_sha;
 	swap32 = (uint32_t *)merkle_root;
 	flip32(swap32, data32);

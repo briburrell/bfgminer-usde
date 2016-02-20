@@ -389,8 +389,8 @@ AC_SUBST([UDEVRULES_GROUP], [$udevrules_group])
 
 
 BFG_ALGO(Keccak,no)
-BFG_ALGO(SHA256d,yes)
-BFG_ALGO(scrypt,no)
+BFG_ALGO(SHA256d,no)
+BFG_ALGO(scrypt,yes)
 
 lowl_pci=no
 if test "x$ac_cv_header_sys_mman_h" = "xyes"; then
